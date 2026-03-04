@@ -110,7 +110,7 @@ export function PatientLogs() {
                   patientName: patient.name || patient.email,
                   mediaId: task.proof_media_id,
                   scheduledDate: task.scheduled_date,
-                  mediaUrl: `http://localhost:8000/api/uploads/file/${task.proof_media_id}`,
+                  mediaUrl: `api/uploads/file/${task.proof_media_id}`,
                 });
               }
             } catch (e) {
