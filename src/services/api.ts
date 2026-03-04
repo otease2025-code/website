@@ -1,5 +1,5 @@
-const API_BASE_URL = 'http://localhost:8000/api';
-export const API_SERVER_URL = 'http://localhost:8000';
+const API_BASE_URL = 'http://16.171.58.155:8000/api';
+export const API_SERVER_URL = 'http://16.171.58.155:8000';
 
 export const api = {
     // Patient Endpoints
