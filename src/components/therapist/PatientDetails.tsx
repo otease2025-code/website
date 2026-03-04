@@ -722,44 +722,6 @@ export function PatientDetails() {
               </div>
             </div>
 
-            {/* Therapist Notes */}
-            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-gray-700 font-semibold">Therapist Notes</h3>
-                {!isEditingNotes ? (
-                  <button
-                    onClick={() => setIsEditingNotes(true)}
-                    className="flex items-center gap-2 text-blue-600 hover:text-blue-700 text-sm font-medium"
-                  >
-                    <Edit2 className="w-4 h-4" />
-                    Edit
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => setIsEditingNotes(false)}
-                    className="flex items-center gap-2 text-green-600 hover:text-green-700 text-sm font-medium"
-                  >
-                    <Save className="w-4 h-4" />
-                    Save
-                  </button>
-                )}
-              </div>
-
-              {isEditingNotes ? (
-                <textarea
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm min-h-[150px] focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Add your observations, treatment notes, progress updates..."
-                />
-              ) : (
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <p className="text-gray-700 text-sm whitespace-pre-wrap">
-                    {notes || 'No notes added yet. Click Edit to add notes.'}
-                  </p>
-                </div>
-              )}
-            </div>
           </TabsContent>
 
           <TabsContent value="medical" className="space-y-4">
