@@ -1,0 +1,52 @@
+﻿========================================
+OTES Trauma Management System - API Tests
+========================================
+
+--- Testing API Root ---
+[PASS] API Root
+
+Name                        
+----                        
+Status                      
+Name                        
+Response                    
+
+--- Testing Authentication ---
+[FAIL] Therapist Registration - The remote server returned an error: (400) Bad Request.
+[PASS] Therapist Login
+       Therapist ID: 561d1954-d33c-4e4f-8847-ef44b8c06890
+
+--- Testing Therapist Features ---
+[PASS] Generate Linkage Code
+       Code: a42d0936 (expires: 2026-02-07T08:32:38.809260)
+
+--- Testing Patient Registration ---
+[FAIL] Patient Registration - The remote server returned an error: (400) Bad Request.
+
+--- Testing Caregiver Registration ---
+[FAIL] Caregiver Registration - The remote server returned an error: (400) Bad Request.
+
+--- Testing Therapist Patient Management ---
+[PASS] Get Patients List
+       Found 1 patient(s)
+
+--- Testing Task Assignment ---
+
+--- Testing Patient Features ---
+
+--- Testing Caregiver Features ---
+
+--- Testing Billing ---
+
+--- Testing Appointments ---
+
+========================================
+Testing Complete!
+========================================
+
+Test Users Created:
+  Therapist: test.therapist2@otes.com / Test1234!
+  Patient:   test.patient2@otes.com / Test1234!
+  Caregiver: test.caregiver2@otes.com / Test1234!
+
+

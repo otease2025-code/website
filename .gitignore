@@ -1,0 +1,13 @@
+node_modules/
+dist/
+.env
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+server/venv/
+*.db
+*.sqlite
+.DS_Store
+server/fix_adl_dates.py

@@ -1,0 +1,185 @@
+/* Caregiver background with professional illustration */
+.caregiver-bg {
+  background-image: url('/src/assets/caregiver.png');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+  background-color: #f8f9fa;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Light overlay for better readability while preserving the beautiful illustration */
+.caregiver-bg::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(248, 249, 250, 0.25) 100%);
+  z-index: -1;
+  pointer-events: none;
+}
+
+.caregiver-home-bg {
+  background-image: url('/src/assets/caregiver.png');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+  background-color: #f8f9fa;
+  position: relative;
+  overflow: hidden;
+}
+
+.caregiver-home-bg::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(248, 249, 250, 0.25) 100%);
+  z-index: -1;
+  pointer-events: none;
+}
+
+.caregiver-login-bg {
+  background-image: url('/src/assets/caregiver.png');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+  background-color: #f8f9fa;
+  position: relative;
+  overflow: hidden;
+}
+
+.caregiver-login-bg::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(248, 249, 250, 0.25) 100%);
+  z-index: -1;
+  pointer-events: none;
+}
+
+.caregiver-patients-bg {
+  background-image: url('/src/assets/caregiver.png');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+  background-color: #f8f9fa;
+  position: relative;
+  overflow: hidden;
+}
+
+.caregiver-patients-bg::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(248, 249, 250, 0.25) 100%);
+  z-index: -1;
+  pointer-events: none;
+}
+
+.caregiver-verify-bg {
+  background-image: url('/src/assets/caregiver.png');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+  background-color: #f8f9fa;
+  position: relative;
+  overflow: hidden;
+}
+
+.caregiver-verify-bg::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(248, 249, 250, 0.25) 100%);
+  z-index: -1;
+  pointer-events: none;
+}
+
+.caregiver-reports-bg {
+  background-image: url('/src/assets/caregiver.png');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+  background-color: #f8f9fa;
+  position: relative;
+  overflow: hidden;
+}
+
+.caregiver-reports-bg::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(248, 249, 250, 0.25) 100%);
+  z-index: -1;
+  pointer-events: none;
+}
+
+.caregiver-account-bg {
+  background-image: url('/src/assets/caregiver.png');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+  background-color: #f8f9fa;
+  position: relative;
+  overflow: hidden;
+}
+
+.caregiver-account-bg::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(248, 249, 250, 0.25) 100%);
+  z-index: -1;
+  pointer-events: none;
+}
+
+.caregiver-details-bg {
+  background-image: url('/src/assets/caregiver.png');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+  background-color: #f8f9fa;
+  position: relative;
+  overflow: hidden;
+}
+
+.caregiver-details-bg::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(248, 249, 250, 0.25) 100%);
+  z-index: -1;
+  pointer-events: none;
+}

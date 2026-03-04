@@ -1,0 +1,16 @@
+/* Login Background Styles */
+.login-bg-image {
+  background-image: url('/login.jpg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  min-height: 100vh;
+}
+
+.login-mobile-bg {
+  background-image: url('/login.jpg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  height: 8rem;
+}

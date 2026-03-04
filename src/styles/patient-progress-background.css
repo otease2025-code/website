@@ -1,0 +1,5 @@
+/* Patient Progress background - pale yellowish */
+.patient-progress-bg {
+  background-color: #FFFDF5;
+  min-height: 100vh;
+}
