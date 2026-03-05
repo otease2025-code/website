@@ -125,8 +125,9 @@ def complete_task(task_id: str, completion: TaskCompletion, session: Session = D
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
     
-    # IST time-window validation: only check when marking as completed
-    if completion.is_completed:
+    # IST time-window validation: only check when marking as completed WITHOUT media proof
+    # If proof media is attached, skip window enforcement (media upload is proof of presence)
+    if completion.is_completed and not completion.proof_media_id:
         now_ist = datetime.now(IST)
         try:
             task_date = datetime.strptime(task.scheduled_date, "%Y-%m-%d").date()

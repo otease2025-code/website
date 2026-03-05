@@ -6,7 +6,7 @@ import { CheckCircle2, Circle, ListTodo, Play, ChevronDown, ChevronUp, Camera, M
 import '../../styles/patient-tasks-background.css';
 import { api } from '../../services/api';
 
-const API_SERVER_URL = 'http://localhost:8000';
+const API_SERVER_URL = 'http://16.171.58.155';
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
 type Task = {
@@ -105,9 +105,10 @@ export function PatientTasks() {
     return () => clearInterval(interval);
   }, []);
 
+  // Only show therapist-assigned tasks (NOT ADL schedule) for today
   const tasks = allTasks.filter(task =>
     task.scheduled_date === today &&
-    (task.task_type === 'therapist_task' || task.task_type === 'adl_schedule' || task.task_type === 'general' || !task.task_type)
+    task.task_type !== 'adl_schedule'
   );
 
   const handleFileSelect = async (taskId: string, file: File) => {

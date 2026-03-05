@@ -192,7 +192,7 @@ def get_patient_details(patient_id: str, session: Session = Depends(get_session)
         "name": patient.name or patient.email,
         "avatar": "👤",
         "therapist": therapist_name,
-        "emergencyContact": patient.emergency_contact or "N/A",
+        "emergencyContact": "N/A",
         "lastVisit": "Recently"
     }
 
