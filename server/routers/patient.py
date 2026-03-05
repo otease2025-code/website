@@ -164,19 +164,6 @@ def complete_task(task_id: str, completion: TaskCompletion, session: Session = D
     session.add(task)
     session.commit()
 
-    # Notify therapist about task completion
-    if completion.is_completed:
-        patient = session.get(User, task.assigned_to_id)
-        if patient and patient.therapist_id:
-            p_name = patient.name or "Patient"
-            media_note = " (with media proof)" if completion.proof_media_id else " (no media attached)"
-            create_notification(
-                session, patient.therapist_id, "task",
-                "Task Completed",
-                f"{p_name} completed \"{task.title}\"{media_note}"
-            )
-            session.commit()
-
     return {"message": "Task updated"}
 
 class LinkTherapistRequest(BaseModel):

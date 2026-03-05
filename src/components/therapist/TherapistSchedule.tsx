@@ -128,7 +128,7 @@ export function TherapistSchedule() {
                     <div>
                       <p className="font-medium text-gray-800">{patient ? (patient.name || patient.email) : 'Unknown Patient'}</p>
                       <p className="text-xs text-gray-500">
-                        {new Date(appt.datetime).toLocaleDateString()} at {new Date(appt.datetime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        {new Date(appt.datetime).toLocaleDateString('en-US', { timeZone: 'Asia/Kolkata' })} at {new Date(appt.datetime).toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' })}
                       </p>
                     </div>
                     <div className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded-full">

@@ -136,6 +136,19 @@ def verify_task(verification: TaskVerification, session: Session = Depends(get_s
         
     session.add(task)
     session.commit()
+    
+    # Notify therapist that caregiver verified it
+    if verification.verified:
+        patient = session.get(User, task.assigned_to_id)
+        if patient and patient.therapist_id:
+            p_name = patient.name or "Patient"
+            create_notification(
+                session, patient.therapist_id, "task",
+                "Task Verified & Completed",
+                f"Caregiver verified that {p_name} completed \"{task.title}\""
+            )
+            session.commit()
+
     return {"message": "Task verification updated"}
 
 @router.get("/patients")

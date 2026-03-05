@@ -108,7 +108,7 @@ export function PatientTasks() {
   // Only show therapist-assigned tasks (NOT ADL schedule) for today
   const tasks = allTasks.filter(task =>
     task.scheduled_date === today &&
-    task.task_type !== 'adl_schedule'
+    (!task.task_type || !task.task_type.toLowerCase().includes('adl'))
   );
 
   const handleFileSelect = async (taskId: string, file: File) => {

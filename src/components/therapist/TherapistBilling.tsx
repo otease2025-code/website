@@ -294,12 +294,18 @@ export function TherapistBilling() {
                                                                             <option value="Cheque">Cheque</option>
                                                                         </select>
                                                                     </div>
-                                                                    <button
-                                                                        onClick={() => handleMarkPaid(bill.id)}
-                                                                        className="flex-1 bg-[#C2D738] hover:bg-[#aebd33] text-black text-xs font-bold py-1.5 px-3 rounded transition-colors"
-                                                                    >
-                                                                        Mark Paid
-                                                                    </button>
+                                                                    <div className="flex items-center gap-2">
+                                                                        <input
+                                                                            type="checkbox"
+                                                                            className="w-4 h-4 text-[#C2D738] rounded border-gray-300 focus:ring-[#C2D738]"
+                                                                            onChange={(e) => {
+                                                                                if (e.target.checked) {
+                                                                                    handleMarkPaid(bill.id);
+                                                                                }
+                                                                            }}
+                                                                        />
+                                                                        <span className="text-xs font-semibold text-gray-600">Mark Paid</span>
+                                                                    </div>
                                                                 </div>
                                                             </div>
                                                         ))
