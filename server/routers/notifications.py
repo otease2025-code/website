@@ -460,17 +460,27 @@ def _create_notification(
     message: str,
     key: str | None = None,
 ):
-    """Create a notification. If key is provided, use it as the ID for dedup."""
+    """Create a notification safely by checking for existing IDs first."""
+    # 1. Determine the final ID to use
+    final_id = key if key else str(uuid.uuid4())
+    
+    # 2. CHECK IF THIS ID ALREADY EXISTS IN THE DB
+    # This prevents the "duplicate key value violates unique constraint" crash
+    existing = session.get(Notification, final_id)
+    if existing:
+        return None # Exit quietly if it's already there
+
+    # 3. Only create if it's truly new
     notif = Notification(
-        id=key or str(uuid.uuid4()),
+        id=final_id,
         user_id=user_id,
         type=notif_type,
         title=title,
         message=message,
     )
     session.add(notif)
-
-
+    return notif
+    
 def create_notification(
     session: Session,
     user_id: str,
