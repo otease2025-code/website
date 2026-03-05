@@ -134,6 +134,15 @@ export const api = {
             if (!response.ok) throw new Error('Failed to fetch patient billing');
             return response.json();
         },
+        markBillAsPaid: async (billingId: string, paymentMethod: string) => {
+            const response = await fetch(`${API_BASE_URL}/therapist/billing/${billingId}/pay`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ payment_method: paymentMethod })
+            });
+            if (!response.ok) throw new Error('Failed to mark bill as paid');
+            return response.json();
+        },
         getProfile: async (therapistId: string) => {
             const response = await fetch(`${API_BASE_URL}/therapist/profile?therapist_id=${therapistId}`);
             if (!response.ok) throw new Error('Failed to fetch profile');

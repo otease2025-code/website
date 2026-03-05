@@ -129,7 +129,7 @@ export function HappyJournal() {
 
           <Button
             onClick={handleSave}
-            className="w-full py-6 text-lg font-bold rounded-2xl bg-[#9E98ED] hover:bg-[#8878DD] transition-all shadow-lg text-white"
+            className="w-full py-6 text-lg font-bold rounded-2xl bg-black hover:bg-gray-800 transition-all shadow-lg text-white"
           >
             Save Entry
           </Button>

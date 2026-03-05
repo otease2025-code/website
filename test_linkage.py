@@ -1,6 +1,6 @@
 import requests
 
-BASE_URL = "http://localhost:8000/api"
+BASE_URL = "http://16.171.58.155api"
 
 def test_linkage_flow():
     # 1. Register Therapist

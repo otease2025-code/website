@@ -40,7 +40,7 @@ python -m uvicorn main:app --reload
 ```
 
 The backend API will be available at `http://localhost:8000`.
-You can view the API documentation at `http://localhost:8000/docs`.
+You can view the API documentation at `http://16.171.58.155docs`.
 
 ## 2. Start the Frontend Server
 

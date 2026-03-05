@@ -168,6 +168,21 @@ def get_patient_billing(patient_id: str, session: Session = Depends(get_session)
         "bills": bills_list
     }
 
+@router.put("/billing/{billing_id}/pay")
+def pay_bill(billing_id: str, payload: dict, session: Session = Depends(get_session)):
+    """Mark a pending bill as PAID"""
+    billing = session.get(Billing, billing_id)
+    if not billing:
+        raise HTTPException(status_code=404, detail="Billing record not found")
+        
+    billing.status = "PAID"
+    billing.payment_method = payload.get("payment_method", "Cash")
+    billing.transaction_date = datetime.utcnow()
+    
+    session.add(billing)
+    session.commit()
+    return {"message": "Bill marked as paid"}
+
 @router.get("/patients/{patient_id}/progress")
 def get_patient_progress(patient_id: str, session: Session = Depends(get_session)):
     """Get task progress and caregiver-verified media for a patient"""

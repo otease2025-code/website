@@ -55,8 +55,11 @@ export function PatientLogs() {
         for (const patient of patients) {
           try {
             const tasks = await api.patient.getTasks(patient.id);
-            const scheduled = tasks.length;
-            const completed = tasks.filter((t: any) => t.is_completed && t.verified_by_caregiver).length;
+            const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+            const todayTasks = tasks.filter((t: any) => t.scheduled_date === today);
+
+            const scheduled = todayTasks.length;
+            const completed = todayTasks.filter((t: any) => t.is_completed && t.verified_by_caregiver).length;
 
             logs.push({
               id: patient.id,
@@ -368,7 +371,7 @@ export function PatientLogs() {
                   {/* Mood Score */}
                   {log.mood_score && (
                     <p className="text-sm text-gray-600 mb-2">
-                      Intensity: <span className="text-[#6328FF] font-semibold">{log.mood_score}/10</span>
+                      Intensity: <span className="text-[#6328FF] font-semibold">{log.mood_score}/{log.source === 'happy_journal' ? '5' : '10'}</span>
                     </p>
                   )}
 
