@@ -126,22 +126,22 @@ def _generate_therapist_notifications(
 
     for appt in today_appointments:
     # Convert UTC time from DB to IST
-    appt_ist = appt.datetime.replace(tzinfo=timezone.utc).astimezone(IST)
-    appt_date = appt_ist.strftime("%Y-%m-%d")
-    appt_time = appt_ist.strftime("%I:%M %p") # e.g., 05:30 PM
+        appt_ist = appt.datetime.replace(tzinfo=timezone.utc).astimezone(IST)
+        appt_date = appt_ist.strftime("%Y-%m-%d")
+        appt_time = appt_ist.strftime("%I:%M %p") # e.g., 05:30 PM
+        
+        p_name = patient_map.get(appt.patient_id, "Patient")
     
-    p_name = patient_map.get(appt.patient_id, "Patient")
-
-    if appt_date == today_str:
-        key = f"appt_today_{appt.id}"
-        if not _notification_exists(therapist.id, key, session):
-            _create_notification(
-                session, therapist.id, "appointment",
-                "Appointment Today",
-                f"You have an appointment with {p_name} today at {appt_time}", # Added time
-                key
-            )
-            count += 1
+        if appt_date == today_str:
+            key = f"appt_today_{appt.id}"
+            if not _notification_exists(therapist.id, key, session):
+                _create_notification(
+                    session, therapist.id, "appointment",
+                    "Appointment Today",
+                    f"You have an appointment with {p_name} today at {appt_time}", # Added time
+                    key
+                )
+                count += 1
 
         # 2. Appointment tomorrow (previous day reminder)
         if appt_date == tomorrow_str:
@@ -280,14 +280,18 @@ def _generate_patient_notifications(
         ).all()
 
         for appt in appointments:
-            appt_date = appt.datetime.strftime("%Y-%m-%d")
+    # Convert UTC time from DB to IST
+            appt_ist = appt.datetime.replace(tzinfo=timezone.utc).astimezone(IST)
+            appt_date = appt_ist.strftime("%Y-%m-%d")
+            appt_time = appt_ist.strftime("%I:%M %p")
+        
             if appt_date == today_str:
                 key = f"appt_today_{appt.id}"
                 if not _notification_exists(patient.id, key, session):
                     _create_notification(
                         session, patient.id, "appointment",
                         "Appointment Today",
-                        f"Your appointment with {t_name} is today",
+                        f"Your appointment with {t_name} is today at {appt_time}", # Added time
                         key
                     )
                     count += 1
