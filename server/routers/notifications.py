@@ -509,7 +509,12 @@ def create_notification(
 
 def _format_time_ago(dt: datetime) -> str:
     """Format a datetime as a human-readable relative time string."""
+    # Ensure both are UTC and naive for comparison
     now = datetime.utcnow()
+    # If dt has timezone info, strip it for the math
+    if dt.tzinfo:
+        dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
+        
     diff = now - dt
     seconds = diff.total_seconds()
 
