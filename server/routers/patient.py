@@ -115,21 +115,20 @@ def get_caregiver_code(user_id: str, session: Session = Depends(get_session)):
         
     return {"code": user.caregiver_code}
 
-class TaskCompletion(BaseModel):
-    is_completed: bool
-    proof_media_id: str | None = None
-
 @router.put("/tasks/{task_id}")
 def complete_task(task_id: str, completion: TaskCompletion, session: Session = Depends(get_session)):
+    # 1. Fetch the task from the database
     task = session.get(Task, task_id)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
     
-    # IST time-window validation: only check when marking as completed WITHOUT media proof
-    # If proof media is attached, skip window enforcement (media upload is proof of presence)
+    # 2. IST time-window validation
+    # We only enforce the time window if the user is marking it "completed" WITHOUT uploading media.
+    # Uploading media (proof_media_id) acts as a bypass because it proves presence.
     if completion.is_completed and not completion.proof_media_id:
         now_ist = datetime.now(IST)
         try:
+            # Parse the stored string dates/times into datetime objects for comparison
             task_date = datetime.strptime(task.scheduled_date, "%Y-%m-%d").date()
             start_parts = task.start_time.split(":")
             end_parts = task.end_time.split(":")
@@ -138,11 +137,13 @@ def complete_task(task_id: str, completion: TaskCompletion, session: Session = D
                 task_date.year, task_date.month, task_date.day,
                 int(start_parts[0]), int(start_parts[1]), tzinfo=IST
             )
+            # Add a 5-minute grace period to the end time
             task_end = datetime(
                 task_date.year, task_date.month, task_date.day,
                 int(end_parts[0]), int(end_parts[1]), tzinfo=IST
-            ) + timedelta(minutes=5)  # Hidden 5-min grace period
+            ) + timedelta(minutes=5)
             
+            # Raise 400 errors if current time is outside the window
             if now_ist < task_start:
                 raise HTTPException(
                     status_code=400,
@@ -154,18 +155,28 @@ def complete_task(task_id: str, completion: TaskCompletion, session: Session = D
                     detail="Task completion window has expired. This task is now overdue."
                 )
         except ValueError:
-            # If date/time parsing fails, allow completion (backward compatibility)
+            # If date parsing fails, we allow completion for backward compatibility
             pass
     
+    # 3. Update the database object
     task.is_completed = completion.is_completed
+    
+    # CRITICAL FIX: Explicitly assign the media ID to the database column
     if completion.proof_media_id is not None:
         task.proof_media_id = completion.proof_media_id
         
+    # 4. Save changes to RDS
     session.add(task)
     session.commit()
+    session.refresh(task)
 
-    return {"message": "Task updated"}
-
+    return {
+        "status": "success",
+        "message": "Task updated",
+        "is_completed": task.is_completed,
+        "proof_media_id": task.proof_media_id
+    }
+    
 class LinkTherapistRequest(BaseModel):
     code: str
 
