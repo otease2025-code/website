@@ -8,7 +8,9 @@ from pydantic import BaseModel
 from routers.notifications import create_notification
 
 router = APIRouter(prefix="/api/patient", tags=["patient"])
-
+class TaskCompletion(BaseModel):
+    is_completed: bool
+    proof_media_id: str | None = None
 # IST timezone offset (+5:30)
 IST = timezone(timedelta(hours=5, minutes=30))
 
