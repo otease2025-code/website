@@ -508,14 +508,17 @@ def create_notification(
 
 
 def _format_time_ago(dt: datetime) -> str:
-    """Format a datetime as a human-readable relative time string."""
-    # Ensure both are UTC and naive for comparison
-    now = datetime.utcnow()
-    # If dt has timezone info, strip it for the math
-    if dt.tzinfo:
-        dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
+    """Format a datetime as a human-readable relative IST time string."""
+    # Compare IST now to the notification time
+    now_ist = datetime.now(IST)
+    
+    # Ensure the notification dt is also in IST for accurate subtraction
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc).astimezone(IST)
+    else:
+        dt = dt.astimezone(IST)
         
-    diff = now - dt
+    diff = now_ist - dt
     seconds = diff.total_seconds()
 
     if seconds < 60:
@@ -526,8 +529,5 @@ def _format_time_ago(dt: datetime) -> str:
     elif seconds < 86400:
         hours = int(seconds // 3600)
         return f"{hours} hour{'s' if hours != 1 else ''} ago"
-    elif seconds < 604800:
-        days = int(seconds // 86400)
-        return f"{days} day{'s' if days != 1 else ''} ago"
     else:
-        return dt.strftime("%b %d, %Y")
+        return dt.strftime("%b %d, %I:%M %p") # Shows date + IST time
