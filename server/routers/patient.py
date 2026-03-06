@@ -190,7 +190,7 @@ def link_therapist(link_data: LinkTherapistRequest, user_id: str, session: Sessi
         raise HTTPException(status_code=404, detail="Invalid linkage code")
     
     # Check expiry
-    if linkage.expires_at < datetime.utcnow():
+    if linkage.expires_at < datetime.now(IST).replace(tzinfo=None):
         raise HTTPException(status_code=400, detail="Linkage code expired")
     
     # Get Patient
