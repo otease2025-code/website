@@ -5,6 +5,18 @@ from routers import auth, patient, therapist, caregiver, uploads, notifications,
 import uvicorn
 from contextlib import asynccontextmanager
 
+# ---> ADDED FOR PUSH NOTIFICATIONS <---
+import firebase_admin
+from firebase_admin import credentials
+
+try:
+    cred = credentials.Certificate("firebase-service-account.json")
+    firebase_admin.initialize_app(cred)
+    print("Firebase initialized successfully!")
+except Exception as e:
+    print(f"Warning: Firebase failed to initialize. Push notifications will not work. {e}")
+# ---> END NOTIFICATION ADDITION <---
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     create_db_and_tables()
