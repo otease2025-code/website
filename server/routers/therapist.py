@@ -222,10 +222,15 @@ def get_patient_progress(patient_id: str, session: Session = Depends(get_session
 
 @router.post("/appointments")
 def create_appointment(therapist_id: str, appt_data: AppointmentCreate, session: Session = Depends(get_session)):
+    # Convert incoming datetime to IST naive
+    dt = appt_data.datetime
+    if dt.tzinfo is not None:
+        dt = dt.astimezone(IST).replace(tzinfo=None)
+        
     appt = Appointment(
         therapist_id=therapist_id,
         patient_id=appt_data.patient_id,
-        datetime=appt_data.datetime,
+        datetime=dt,
         is_recurring=appt_data.is_recurring
     )
     session.add(appt)
@@ -237,7 +242,7 @@ def create_appointment(therapist_id: str, appt_data: AppointmentCreate, session:
     therapist = session.get(User, therapist_id)
     p_name = patient.name if patient else "Patient"
     t_name = therapist.name if therapist else "Therapist"
-    appt_date_str = appt_data.datetime.strftime("%b %d, %Y at %I:%M %p")
+    appt_date_str = dt.strftime("%b %d, %Y at %I:%M %p")
 
     create_notification(
         session, appt_data.patient_id, "appointment",
