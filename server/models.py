@@ -40,7 +40,8 @@ class User(SQLModel, table=True):
     # Patient specific fields
     caregiver_code: Optional[str] = None
 
-    caregiver_code: Optional[str] = None
+    # ---> ADDED FOR PUSH NOTIFICATIONS <---
+    fcm_token: Optional[str] = None
 
 class CaregiverPatient(SQLModel, table=True):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
@@ -80,7 +81,6 @@ class CaregiverNote(SQLModel, table=True):
     author_id: str = Field(foreign_key="user.id")
     patient_id: str = Field(foreign_key="user.id")
     created_at: datetime = Field(default_factory=ist_now)
-
 
 class MoodEntry(SQLModel, table=True):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
