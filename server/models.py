@@ -1,5 +1,10 @@
 from typing import Optional, List
-from datetime import datetime, time
+from datetime import datetime, time, timezone, timedelta
+
+IST = timezone(timedelta(hours=5, minutes=30))
+
+def ist_now():
+    return datetime.now(IST).replace(tzinfo=None)
 from enum import Enum
 from sqlmodel import Field, SQLModel, Relationship
 import uuid
@@ -15,8 +20,8 @@ class User(SQLModel, table=True):
     password: str
     name: Optional[str] = None
     role: Role
-    createdAt: datetime = Field(default_factory=datetime.utcnow)
-    updatedAt: datetime = Field(default_factory=datetime.utcnow)
+    createdAt: datetime = Field(default_factory=ist_now)
+    updatedAt: datetime = Field(default_factory=ist_now)
     
     # Relationships
     therapist_id: Optional[str] = Field(default=None, foreign_key="user.id")
@@ -41,7 +46,7 @@ class CaregiverPatient(SQLModel, table=True):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
     caregiver_id: str = Field(foreign_key="user.id")
     patient_id: str = Field(foreign_key="user.id")
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=ist_now)
 
 class LinkageCode(SQLModel, table=True):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
@@ -51,7 +56,7 @@ class LinkageCode(SQLModel, table=True):
     is_used: bool = False # Deprecated, kept for backward compatibility if needed
     patient_linked: bool = Field(default=False)
     caregiver_linked: bool = Field(default=False)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=ist_now)
 
 class Task(SQLModel, table=True):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
@@ -67,14 +72,14 @@ class Task(SQLModel, table=True):
     verified_by_caregiver: bool = False
     proof_media_id: Optional[str] = None
     verification_notes: Optional[str] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=ist_now)
 
 class CaregiverNote(SQLModel, table=True):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
     content: str
     author_id: str = Field(foreign_key="user.id")
     patient_id: str = Field(foreign_key="user.id")
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=ist_now)
 
 
 class MoodEntry(SQLModel, table=True):
@@ -85,7 +90,7 @@ class MoodEntry(SQLModel, table=True):
     secondary_emotion: Optional[str] = None
     tertiary_emotion: Optional[str] = None
     journal_text: Optional[str] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=ist_now)
 
 class Appointment(SQLModel, table=True):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
@@ -93,7 +98,7 @@ class Appointment(SQLModel, table=True):
     patient_id: str = Field(foreign_key="user.id")
     datetime: datetime # Back to simple naive datetime
     is_recurring: bool = False
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=ist_now)
 
 class Billing(SQLModel, table=True):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
@@ -104,7 +109,7 @@ class Billing(SQLModel, table=True):
     status: str = "PENDING" # PENDING, PAID
     payment_method: Optional[str] = None  # Cash, UPI, Card, Cheque
     transaction_date: Optional[datetime] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=ist_now)
 
 class MediaUpload(SQLModel, table=True):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
@@ -115,7 +120,7 @@ class MediaUpload(SQLModel, table=True):
     mime_type: str  # e.g., "image/jpeg", "video/mp4"
     file_size: int  # Size in bytes
     description: Optional[str] = None  # Optional caption
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=ist_now)
 
 class Notification(SQLModel, table=True):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
@@ -124,7 +129,7 @@ class Notification(SQLModel, table=True):
     title: str
     message: str
     is_read: bool = Field(default=False)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=ist_now)
 
 class PatientProfile(SQLModel, table=True):
     """Stores all therapist-entered clinical profile data for a patient."""
@@ -164,4 +169,4 @@ class PatientProfile(SQLModel, table=True):
     smart_goal_3_sub: Optional[str] = None
     treatment_approaches: Optional[str] = None
 
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=ist_now)
