@@ -118,6 +118,7 @@ def _generate_therapist_notifications(
     patient_map = {p.id: p.name or "Patient" for p in patients}
 
     # 1. Appointment today (12:01 AM) notifications
+# 1. Appointment notifications
     today_appointments = session.exec(
         select(Appointment).where(
             Appointment.therapist_id == therapist.id
@@ -125,32 +126,34 @@ def _generate_therapist_notifications(
     ).all()
 
     for appt in today_appointments:
-    # Convert UTC time from DB to IST
+        # CRITICAL: Convert UTC from DB to IST
+        # We use .replace(tzinfo=timezone.utc) because the DB datetime is usually 'naive' UTC
         appt_ist = appt.datetime.replace(tzinfo=timezone.utc).astimezone(IST)
         appt_date = appt_ist.strftime("%Y-%m-%d")
-        appt_time = appt_ist.strftime("%I:%M %p") # e.g., 05:30 PM
+        appt_time = appt_ist.strftime("%I:%M %p") # 12-hour format with AM/PM
         
         p_name = patient_map.get(appt.patient_id, "Patient")
     
+        # Today's Reminder
         if appt_date == today_str:
             key = f"appt_today_{appt.id}"
             if not _notification_exists(therapist.id, key, session):
                 _create_notification(
                     session, therapist.id, "appointment",
                     "Appointment Today",
-                    f"You have an appointment with {p_name} today at {appt_time}", # Added time
+                    f"You have an appointment with {p_name} today at {appt_time} IST", # Added IST label
                     key
                 )
                 count += 1
 
-        # 2. Appointment tomorrow (previous day reminder)
+        # Tomorrow's Reminder
         if appt_date == tomorrow_str:
             key = f"appt_tomorrow_{appt.id}"
             if not _notification_exists(therapist.id, key, session):
                 _create_notification(
                     session, therapist.id, "appointment",
                     "Appointment Tomorrow",
-                    f"Reminder: Appointment with {p_name} tomorrow",
+                    f"Reminder: Appointment with {p_name} tomorrow at {appt_time} IST", # Added time here too
                     key
                 )
                 count += 1
@@ -281,17 +284,17 @@ def _generate_patient_notifications(
 
         for appt in appointments:
     # Convert UTC time from DB to IST
+# ... inside the appointment loop ...
             appt_ist = appt.datetime.replace(tzinfo=timezone.utc).astimezone(IST)
-            appt_date = appt_ist.strftime("%Y-%m-%d")
-            appt_time = appt_ist.strftime("%I:%M %p")
-        
+            appt_time = appt_ist.strftime("%I:%M %p") # This is now correctly IST
+            
             if appt_date == today_str:
                 key = f"appt_today_{appt.id}"
                 if not _notification_exists(patient.id, key, session):
                     _create_notification(
                         session, patient.id, "appointment",
                         "Appointment Today",
-                        f"Your appointment with {t_name} is today at {appt_time}", # Added time
+                        f"Your appointment with {t_name} is today at {appt_time} IST", # Added IST label
                         key
                     )
                     count += 1
