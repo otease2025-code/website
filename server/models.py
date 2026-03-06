@@ -87,13 +87,32 @@ class MoodEntry(SQLModel, table=True):
     journal_text: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
+from datetime import datetime, timedelta
+import pytz
+import uuid
+from sqlmodel import SQLModel, Field
+
+# Define IST once at the top of your file
+IST = pytz.timezone('Asia/Kolkata')
+
+def get_now_ist():
+    return datetime.now(IST)
+
 class Appointment(SQLModel, table=True):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
     therapist_id: str = Field(foreign_key="user.id")
     patient_id: str = Field(foreign_key="user.id")
-    datetime: datetime
+    
+    # This stores the specific appointment time
+    appointment_time: datetime = Field(sa_column_kwargs={"type_": "TIMESTAMP WITH TIME ZONE"}) 
+    
     is_recurring: bool = False
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    
+    # Use the IST function for the creation timestamp
+    created_at: datetime = Field(
+        default_factory=get_now_ist,
+        sa_column_kwargs={"type_": "TIMESTAMP WITH TIME ZONE"}
+    )
 
 class Billing(SQLModel, table=True):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
