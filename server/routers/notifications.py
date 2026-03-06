@@ -102,62 +102,110 @@ def generate_notifications(user_id: str, session: Session = Depends(get_session)
 # ──────────────────────────────────────────────
 
 def _generate_therapist_notifications(
+
     therapist: User, today_str: str, tomorrow_str: str, now_ist: datetime, session: Session
+
 ) -> int:
+
     count = 0
 
+
+
     # Get patients linked to this therapist
+
     patients = session.exec(
+
         select(User).where(User.therapist_id == therapist.id, User.role == Role.PATIENT)
+
     ).all()
+
     patient_ids = [p.id for p in patients]
 
+
+
     if not patient_ids:
+
         return 0
+
+
 
     patient_map = {p.id: p.name or "Patient" for p in patients}
 
+
+
     # 1. Appointment today (12:01 AM) notifications
-# 1. Appointment notifications
+
     today_appointments = session.exec(
+
         select(Appointment).where(
+
             Appointment.therapist_id == therapist.id
+
         )
+
     ).all()
 
+
+
     for appt in today_appointments:
-        # CRITICAL: Convert UTC from DB to IST
-        # We use .replace(tzinfo=timezone.utc) because the DB datetime is usually 'naive' UTC
+
+    # Convert UTC time from DB to IST
+
         appt_ist = appt.datetime.replace(tzinfo=timezone.utc).astimezone(IST)
+
         appt_date = appt_ist.strftime("%Y-%m-%d")
-        appt_time = appt_ist.strftime("%I:%M %p") # 12-hour format with AM/PM
+
+        appt_time = appt_ist.strftime("%I:%M %p") # e.g., 05:30 PM
+
         
+
         p_name = patient_map.get(appt.patient_id, "Patient")
+
     
-        # Today's Reminder
+
         if appt_date == today_str:
+
             key = f"appt_today_{appt.id}"
+
             if not _notification_exists(therapist.id, key, session):
+
                 _create_notification(
+
                     session, therapist.id, "appointment",
+
                     "Appointment Today",
-                    f"You have an appointment with {p_name} today at {appt_time} IST", # Added IST label
+
+                    f"You have an appointment with {p_name} today at {appt_time}", # Added time
+
                     key
+
                 )
+
                 count += 1
 
-        # Tomorrow's Reminder
+
+
+        # 2. Appointment tomorrow (previous day reminder)
+
         if appt_date == tomorrow_str:
-            key = f"appt_tomorrow_{appt.id}"
-            if not _notification_exists(therapist.id, key, session):
-                _create_notification(
-                    session, therapist.id, "appointment",
-                    "Appointment Tomorrow",
-                    f"Reminder: Appointment with {p_name} tomorrow at {appt_time} IST", # Added time here too
-                    key
-                )
-                count += 1
 
+            key = f"appt_tomorrow_{appt.id}"
+
+            if not _notification_exists(therapist.id, key, session):
+
+                _create_notification(
+
+                    session, therapist.id, "appointment",
+
+                    "Appointment Tomorrow",
+
+                    f"Reminder: Appointment with {p_name} tomorrow",
+
+                    key
+
+                )
+
+                count += 1
     # 3. Recent patient mood logs (last 24 hours, not yet notified)
     yesterday = now_ist - timedelta(hours=24)
     yesterday_utc = yesterday.astimezone(timezone.utc).replace(tzinfo=None)
@@ -235,80 +283,155 @@ def _generate_therapist_notifications(
 # ──────────────────────────────────────────────
 
 def _generate_patient_notifications(
+
     patient: User, today_str: str, tomorrow_str: str, now_ist: datetime, session: Session
+
 ) -> int:
+
     count = 0
 
+
+
     # 1. Task reminders — tasks starting within 10 minutes
+
     tasks = session.exec(
+
         select(Task).where(
+
             Task.assigned_to_id == patient.id,
+
             Task.scheduled_date == today_str,
+
             Task.is_completed == False,
+
         )
+
     ).all()
 
+
+
     for task in tasks:
+
         try:
+
             start_parts = task.start_time.split(":")
+
             task_start = now_ist.replace(
+
                 hour=int(start_parts[0]),
+
                 minute=int(start_parts[1]),
+
                 second=0, microsecond=0
+
             )
+
             diff = (task_start - now_ist).total_seconds()
+
             # Notify if task starts within 10 minutes AND hasn't started yet
+
             if 0 < diff <= 600:
+
                 key = f"task_reminder_{task.id}_{today_str}"
+
                 if not _notification_exists(patient.id, key, session):
+
                     _create_notification(
+
                         session, patient.id, "reminder",
+
                         "Task Starting Soon",
+
                         f"Task \"{task.title}\" starts in {int(diff // 60)} minutes",
+
                         key
+
                     )
+
                     count += 1
+
         except (ValueError, IndexError):
+
             pass
 
+
+
     # 2. Appointment today
+
     if patient.therapist_id:
+
         therapist = session.get(User, patient.therapist_id)
+
         t_name = therapist.name if therapist else "your therapist"
 
+
+
         appointments = session.exec(
+
             select(Appointment).where(
+
                 Appointment.patient_id == patient.id
+
             )
+
         ).all()
 
+
+
         for appt in appointments:
+
     # Convert UTC time from DB to IST
-# ... inside the appointment loop ...
+
             appt_ist = appt.datetime.replace(tzinfo=timezone.utc).astimezone(IST)
-            appt_time = appt_ist.strftime("%I:%M %p") # This is now correctly IST
-            
+
+            appt_date = appt_ist.strftime("%Y-%m-%d")
+
+            appt_time = appt_ist.strftime("%I:%M %p")
+
+        
+
             if appt_date == today_str:
+
                 key = f"appt_today_{appt.id}"
+
                 if not _notification_exists(patient.id, key, session):
+
                     _create_notification(
+
                         session, patient.id, "appointment",
+
                         "Appointment Today",
-                        f"Your appointment with {t_name} is today at {appt_time} IST", # Added IST label
+
+                        f"Your appointment with {t_name} is today at {appt_time}", # Added time
+
                         key
+
                     )
+
                     count += 1
 
+
+
             # 3. Appointment tomorrow
+
             if appt_date == tomorrow_str:
+
                 key = f"appt_tomorrow_{appt.id}"
+
                 if not _notification_exists(patient.id, key, session):
+
                     _create_notification(
+
                         session, patient.id, "appointment",
+
                         "Appointment Tomorrow",
+
                         f"Reminder: Your appointment with {t_name} is tomorrow",
+
                         key
+
                     )
+
                     count += 1
 
     # 4. Welcome notification (if therapist is linked)
@@ -511,26 +634,49 @@ def create_notification(
 
 
 def _format_time_ago(dt: datetime) -> str:
-    """Format a datetime as a human-readable relative IST time string."""
-    # Compare IST now to the notification time
-    now_ist = datetime.now(IST)
-    
-    # Ensure the notification dt is also in IST for accurate subtraction
-    if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc).astimezone(IST)
-    else:
-        dt = dt.astimezone(IST)
+
+    """Format a datetime as a human-readable relative time string."""
+
+    # Ensure both are UTC and naive for comparison
+
+    now = datetime.utcnow()
+
+    # If dt has timezone info, strip it for the math
+
+    if dt.tzinfo:
+
+        dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
+
         
-    diff = now_ist - dt
+
+    diff = now - dt
+
     seconds = diff.total_seconds()
 
+
+
     if seconds < 60:
+
         return "Just now"
+
     elif seconds < 3600:
+
         mins = int(seconds // 60)
+
         return f"{mins} min{'s' if mins != 1 else ''} ago"
+
     elif seconds < 86400:
+
         hours = int(seconds // 3600)
+
         return f"{hours} hour{'s' if hours != 1 else ''} ago"
+
+    elif seconds < 604800:
+
+        days = int(seconds // 86400)
+
+        return f"{days} day{'s' if days != 1 else ''} ago"
+
     else:
-        return dt.strftime("%b %d, %I:%M %p") # Shows date + IST time
+
+        return dt.strftime("%b %d, %Y")
