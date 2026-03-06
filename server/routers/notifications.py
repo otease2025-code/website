@@ -149,9 +149,8 @@ def _generate_therapist_notifications(
 
     for appt in today_appointments:
 
-    # Convert UTC time from DB to IST
-
-        appt_ist = appt.datetime.replace(tzinfo=timezone.utc).astimezone(IST)
+    # Convert DB time (already IST naive)
+        appt_ist = appt.datetime.replace(tzinfo=IST)
 
         appt_date = appt_ist.strftime("%Y-%m-%d")
 
@@ -208,11 +207,11 @@ def _generate_therapist_notifications(
                 count += 1
     # 3. Recent patient mood logs (last 24 hours, not yet notified)
     yesterday = now_ist - timedelta(hours=24)
-    yesterday_utc = yesterday.astimezone(timezone.utc).replace(tzinfo=None)
+    yesterday_ist = yesterday.replace(tzinfo=None)
     mood_entries = session.exec(
         select(MoodEntry).where(
             MoodEntry.user_id.in_(patient_ids),
-            MoodEntry.created_at >= yesterday_utc,
+            MoodEntry.created_at >= yesterday_ist,
         )
     ).all()
 
@@ -236,7 +235,7 @@ def _generate_therapist_notifications(
         select(Task).where(
             Task.assigned_to_id.in_(patient_ids),
             Task.is_completed == True,
-            Task.created_at >= yesterday_utc,
+            Task.created_at >= yesterday_ist,
         )
     ).all()
 
@@ -254,12 +253,12 @@ def _generate_therapist_notifications(
             count += 1
 
     # 5. New patient registrations (last 7 days, not yet notified)
-    week_ago_utc = (now_ist - timedelta(days=7)).astimezone(timezone.utc).replace(tzinfo=None)
+    week_ago_ist = (now_ist - timedelta(days=7)).replace(tzinfo=None)
     new_patients = session.exec(
         select(User).where(
             User.therapist_id == therapist.id,
             User.role == Role.PATIENT,
-            User.createdAt >= week_ago_utc,
+            User.createdAt >= week_ago_ist,
         )
     ).all()
 
@@ -380,9 +379,8 @@ def _generate_patient_notifications(
 
         for appt in appointments:
 
-    # Convert UTC time from DB to IST
-
-            appt_ist = appt.datetime.replace(tzinfo=timezone.utc).astimezone(IST)
+            # Convert DB time (already IST naive)
+            appt_ist = appt.datetime.replace(tzinfo=IST)
 
             appt_date = appt_ist.strftime("%Y-%m-%d")
 
@@ -467,11 +465,11 @@ def _generate_patient_notifications(
             count += 1
 
     # 6. Recent billing notifications (last 7 days)
-    week_ago_utc = (now_ist - timedelta(days=7)).astimezone(timezone.utc).replace(tzinfo=None)
+    week_ago_ist = (now_ist - timedelta(days=7)).replace(tzinfo=None)
     bills = session.exec(
         select(Billing).where(
             Billing.patient_id == patient.id,
-            Billing.created_at >= week_ago_utc,
+            Billing.created_at >= week_ago_ist,
         )
     ).all()
 
@@ -634,21 +632,14 @@ def create_notification(
 
 
 def _format_time_ago(dt: datetime) -> str:
-
     """Format a datetime as a human-readable relative time string."""
-
-    # Ensure both are UTC and naive for comparison
-
-    now = datetime.utcnow()
-
+    # Ensure naive IST for comparison
+    now = datetime.now(IST).replace(tzinfo=None)
     # If dt has timezone info, strip it for the math
-
     if dt.tzinfo:
-
-        dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
+        dt = dt.astimezone(IST).replace(tzinfo=None)
 
         
-
     diff = now - dt
 
     seconds = diff.total_seconds()
