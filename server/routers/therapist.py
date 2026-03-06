@@ -3,12 +3,14 @@ from sqlmodel import Session, select
 from database import get_session
 from models import User, Role, LinkageCode, Task, MoodEntry, Billing, Appointment, MediaUpload, CaregiverPatient, PatientProfile
 from typing import List, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pydantic import BaseModel
 import uuid
 from routers.notifications import create_notification
 
 router = APIRouter(prefix="/api/therapist", tags=["therapist"])
+
+IST = timezone(timedelta(hours=5, minutes=30))
 
 class TaskAssign(BaseModel):
     title: str
@@ -42,7 +44,7 @@ def generate_linkage_code(therapist_id: str, session: Session = Depends(get_sess
     
     # Generate a unique code
     code = str(uuid.uuid4())[:8] # Simple 8 char code
-    expires_at = datetime.utcnow() + timedelta(hours=12)
+    expires_at = datetime.now(IST).replace(tzinfo=None) + timedelta(hours=12)
     
     try:
         linkage = LinkageCode(
@@ -120,7 +122,7 @@ def confirm_billing(therapist_id: str, billing_data: BillingCreate, session: Ses
         amount=billing_data.amount,
         status=billing_data.status.upper(),
         payment_method=billing_data.payment_method,
-        transaction_date=datetime.utcnow()
+        transaction_date=datetime.now(IST).replace(tzinfo=None)
     )
     session.add(billing)
     session.commit()
@@ -177,7 +179,7 @@ def pay_bill(billing_id: str, payload: dict, session: Session = Depends(get_sess
         
     billing.status = "PAID"
     billing.payment_method = payload.get("payment_method", "Cash")
-    billing.transaction_date = datetime.utcnow()
+    billing.transaction_date = datetime.now(IST).replace(tzinfo=None)
     
     session.add(billing)
     session.commit()
@@ -400,7 +402,7 @@ def update_profile(therapist_id: str, data: ProfileUpdate, session: Session = De
     if data.phone is not None: user.phone = data.phone
     if data.address is not None: user.address = data.address
     
-    user.updatedAt = datetime.utcnow()
+    user.updatedAt = datetime.now(IST).replace(tzinfo=None)
     session.add(user)
     session.commit()
     
@@ -465,7 +467,7 @@ def upsert_patient_profile(patient_id: str, data: PatientProfileUpdate, session:
         if value is not None:
             setattr(profile, key, value)
 
-    profile.updated_at = datetime.utcnow()
+    profile.updated_at = datetime.now(IST).replace(tzinfo=None)
     session.commit()
     session.refresh(profile)
     return {"message": "Patient profile saved", "profile": profile}
