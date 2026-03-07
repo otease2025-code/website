@@ -15,35 +15,53 @@ IST = timezone(timedelta(hours=5, minutes=30))
 
 # ─── Background Helper For Patient Deadlines ──────────────────────────────────
 
-async def schedule_deadline_warning(patient_id: str, task_title: str, scheduled_date: str, end_time_str: str):
-    """
-    Waits until exactly 5 minutes before the task's end_time to send 
-    a push notification specifically to the patient.
-    """
+# --- HELPER 1: Warning 5 mins BEFORE START ---
+async def schedule_start_warning(patient_id: str, task_title: str, scheduled_date: str, start_time_str: str):
     try:
-        # Combine date and time (assuming format YYYY-MM-DD and HH:mm)
-        end_dt_str = f"{scheduled_date} {end_time_str}"
-        end_time = datetime.strptime(end_dt_str, "%Y-%m-%d %H:%M")
+        # Format: YYYY-MM-DD HH:mm
+        start_dt_str = f"{scheduled_date} {start_time_str}"
+        start_time = datetime.strptime(start_dt_str, "%Y-%m-%d %H:%M")
+        warning_time = start_time - timedelta(minutes=5)
         
-        # Calculate 5 minutes before
-        warning_time = end_time - timedelta(minutes=5)
-        
-        # Calculate wait time from 'now'
+        # Calculate seconds from 'now'
         now = datetime.now()
         seconds_to_wait = (warning_time - now).total_seconds()
 
         if seconds_to_wait > 0:
-            print(f"[DEBUG] Notification for '{task_title}' queued. Waiting {seconds_to_wait}s.")
+            print(f"[DEBUG] Start reminder for '{task_title}' in {seconds_to_wait}s.")
             await asyncio.sleep(seconds_to_wait)
             
-            # Send the push to the PATIENT only
             await send_push_notification(
                 user_id=patient_id,
-                title="Task Deadline Approaching! ⏳",
-                body=f"You have 5 minutes left to finish: {task_title}"
+                title="Task Starting Soon! 🔔",
+                body=f"Your task '{task_title}' starts in 5 minutes."
             )
     except Exception as e:
-        print(f"[ERROR] Background reminder failed: {str(e)}")
+        print(f"[ERROR] Start reminder failed: {e}")
+
+# --- HELPER 2: Warning 5 mins BEFORE END ---
+async def schedule_deadline_warning(patient_id: str, task_title: str, scheduled_date: str, end_time_str: str):
+    try:
+        end_dt_str = f"{scheduled_date} {end_time_str}"
+        end_time = datetime.strptime(end_dt_str, "%Y-%m-%d %H:%M")
+        warning_time = end_time - timedelta(minutes=5)
+        
+        now = datetime.now()
+        seconds_to_wait = (warning_time - now).total_seconds()
+
+        if seconds_to_wait > 0:
+            print(f"[DEBUG] Deadline reminder for '{task_title}' in {seconds_to_wait}s.")
+            await asyncio.sleep(seconds_to_wait)
+            
+            await send_push_notification(
+                user_id=patient_id,
+                title="Task Ending Soon! ⏳",
+                body=f"Hurry! Only 5 minutes left to finish: {task_title}"
+            )
+    except Exception as e:
+        print(f"[ERROR] Deadline reminder failed: {e}")
+
+
 
 # ─── Pydantic Models ──────────────────────────────────────────────────────────
 
@@ -159,6 +177,7 @@ def get_patients(therapist_id: str, session: Session = Depends(get_session)):
         })
     return result
 
+# --- THE UPDATED ENDPOINT ---
 @router.post("/tasks", status_code=status.HTTP_201_CREATED)
 def assign_task(therapist_id: str, task_data: TaskAssign, background_tasks: BackgroundTasks, session: Session = Depends(get_session)):
     # 1. Save to DB
@@ -175,7 +194,16 @@ def assign_task(therapist_id: str, task_data: TaskAssign, background_tasks: Back
     session.add(task)
     session.commit()
 
-    # 2. Trigger background timer for the 5-minute warning
+    # 2. Add Start Timer (5 mins before start)
+    background_tasks.add_task(
+        schedule_start_warning,
+        task_data.patient_id,
+        task_data.title,
+        task_data.scheduled_date,
+        task_data.start_time
+    )
+
+    # 3. Add End Timer (5 mins before deadline)
     background_tasks.add_task(
         schedule_deadline_warning,
         task_data.patient_id,
@@ -184,7 +212,7 @@ def assign_task(therapist_id: str, task_data: TaskAssign, background_tasks: Back
         task_data.end_time
     )
 
-    return {"message": "Task assigned successfully"}
+    return {"message": "Task assigned successfully with both reminders scheduled"}
 
 @router.post("/billing/confirm")
 def confirm_billing(therapist_id: str, billing_data: BillingCreate, session: Session = Depends(get_session)):
