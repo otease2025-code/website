@@ -336,3 +336,92 @@ def pay_bill(billing_id: str, payload: dict, session: Session = Depends(get_sess
     session.add(billing)
     session.commit()
     return {"message": "Bill marked as paid"}
+
+@router.get("/patients/{patient_id}/tasks")
+def get_patient_tasks_therapist(patient_id: str, session: Session = Depends(get_session)):
+    tasks = session.exec(
+        select(Task).where(Task.assigned_to_id == patient_id)
+        .order_by(Task.scheduled_date.desc())
+    ).all()
+    return [{
+        "id": task.id,
+        "title": task.title,
+        "description": task.description,
+        "scheduled_date": task.scheduled_date,
+        "start_time": task.start_time,
+        "end_time": task.end_time,
+        "task_type": task.task_type,
+        "is_completed": task.is_completed,
+        "verified_by_caregiver": task.verified_by_caregiver,
+        "proof_media_id": task.proof_media_id,
+    } for task in tasks]
+
+
+@router.get("/patients/{patient_id}/report")
+def get_patient_report(patient_id: str, session: Session = Depends(get_session)):
+    tasks = session.exec(select(Task).where(Task.assigned_to_id == patient_id)).all()
+
+    ADL_TYPES = {"adl_scheduling", "adl", "daily routines", "Daily Routines"}
+    adl_total = adl_done = task_total = task_done = 0
+
+    monthly_data: dict = {}
+    now = datetime.now(IST).replace(tzinfo=None)
+    for i in range(5, -1, -1):
+        d = now - timedelta(days=30 * i)
+        monthly_data[d.strftime("%b '%y")] = {"completed": 0, "total": 0}
+
+    for task in tasks:
+        ttype = (task.task_type or "").strip()
+        is_adl = ttype in ADL_TYPES
+        completed = task.is_completed and task.verified_by_caregiver
+
+        if is_adl:
+            adl_total += 1
+            if completed: adl_done += 1
+        else:
+            task_total += 1
+            if completed: task_done += 1
+
+        if task.scheduled_date:
+            try:
+                td = datetime.strptime(task.scheduled_date, "%Y-%m-%d")
+                mk = td.strftime("%b '%y")
+                if mk in monthly_data:
+                    monthly_data[mk]["total"] += 1
+                    if completed:
+                        monthly_data[mk]["completed"] += 1
+            except:
+                pass
+
+    media_list = []
+    for task in tasks:
+        if task.proof_media_id:
+            media = session.get(MediaUpload, task.proof_media_id)
+            if media:
+                media_list.append({
+                    "id": media.id,
+                    "task_title": task.title,
+                    "task_category": task.task_type or "General",
+                    "file_url": f"/api/uploads/file/{media.id}",
+                    "file_type": media.file_type or "video/mp4",
+                    "task_date": task.scheduled_date,
+                    "verified": task.verified_by_caregiver,
+                })
+
+    total_tasks = len(tasks)
+    total_completed = adl_done + task_done
+
+    return {
+        "total_tasks": total_tasks,
+        "total_completed": total_completed,
+        "completion_rate": round((total_completed / total_tasks * 100), 1) if total_tasks > 0 else 0,
+        "category_breakdown": [
+            {"category": "ADL Scheduling", "completed": adl_done, "not_completed": adl_total - adl_done, "total": adl_total},
+            {"category": "Task Assignment", "completed": task_done, "not_completed": task_total - task_done, "total": task_total},
+        ],
+        "monthly_completion": [
+            {"month": m, "completed": v["completed"], "total": v["total"]}
+            for m, v in monthly_data.items()
+        ],
+        "media": media_list,
+    }
