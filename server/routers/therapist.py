@@ -215,6 +215,8 @@ def upsert_patient_profile(patient_id: str, data: PatientProfileUpdate, session:
     return {"message": "Patient profile saved"}
 # ─── Standardized Billing Routes ──────────────────────────────────────────────
 
+# ─── Standardized Billing Routes ──────────────────────────────────────────────
+
 @router.post("/billing", status_code=status.HTTP_201_CREATED)
 def create_billing(therapist_id: str, billing_data: BillingCreate, session: Session = Depends(get_session)):
     """Fixed: Standardized endpoint name from /billing/confirm to /billing"""
