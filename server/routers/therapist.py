@@ -164,7 +164,34 @@ def get_all_patient_logs(therapist_id: str, session: Session = Depends(get_sessi
             "journal_text": log.journal_text or ""
         })
     return result
+@router.post("/appointments")
 
+def create_appointment(therapist_id: str, appt_data: AppointmentCreate, session: Session = Depends(get_session)):
+
+    dt = appt_data.datetime.replace(tzinfo=None)
+
+    appt = Appointment(therapist_id=therapist_id, patient_id=appt_data.patient_id, datetime=dt, is_recurring=appt_data.is_recurring)
+
+    session.add(appt)
+
+    session.commit()
+
+
+
+    create_notification(session, appt_data.patient_id, "appointment", "New Appointment", f"Appointment on {dt.strftime('%b %d, %I:%M %p')}")
+
+    session.commit()
+
+    return {"message": "Appointment created"}
+
+
+
+@router.get("/appointments")
+
+def get_appointments(therapist_id: str, session: Session = Depends(get_session)):
+
+    return session.exec(select(Appointment).where(Appointment.therapist_id == therapist_id)).all()
+    
 @router.get("/patients/{patient_id}/progress")
 def get_patient_progress(patient_id: str, session: Session = Depends(get_session)):
     tasks = session.exec(select(Task).where(Task.assigned_to_id == patient_id)).all()
