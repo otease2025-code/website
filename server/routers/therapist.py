@@ -178,35 +178,44 @@ def get_all_patient_logs(therapist_id: str, session: Session = Depends(get_sessi
             "journal_text": log.journal_text or ""
         })
     return result
+# In therapist.py — update create_appointment
 @router.post("/appointments")
-
 def create_appointment(therapist_id: str, appt_data: AppointmentCreate, session: Session = Depends(get_session)):
-
     dt = appt_data.datetime.replace(tzinfo=None)
-
     appt = Appointment(therapist_id=therapist_id, patient_id=appt_data.patient_id, datetime=dt, is_recurring=appt_data.is_recurring)
-
     session.add(appt)
-
     session.commit()
 
-
-
-    create_notification(session, appt_data.patient_id, "appointment", "New Appointment", f"Appointment on {dt.strftime('%b %d, %I:%M %p')}")
-
+    # FIX: Convert stored UTC to IST for display in notification
+    ist_offset = timedelta(hours=5, minutes=30)
+    dt_ist = dt + ist_offset
+    create_notification(
+        session, appt_data.patient_id, "appointment",
+        "New Appointment Scheduled",
+        f"Appointment on {dt_ist.strftime('%b %d, %I:%M %p')} IST"
+    )
     session.commit()
-
     return {"message": "Appointment created"}
 
-
-
+# Also fix get_appointments to return IST time
 @router.get("/appointments")
-
 def get_appointments(therapist_id: str, session: Session = Depends(get_session)):
+    appointments = session.exec(
+        select(Appointment).where(Appointment.therapist_id == therapist_id)
+    ).all()
+    ist_offset = timedelta(hours=5, minutes=30)
+    result = []
+    for appt in appointments:
+        dt_ist = appt.datetime + ist_offset
+        result.append({
+            "id": appt.id,
+            "patient_id": appt.patient_id,
+            "datetime": dt_ist.isoformat(),          # IST time sent to frontend
+            "datetime_display": dt_ist.strftime("%b %d, %Y %I:%M %p"),
+            "is_recurring": appt.is_recurring
+        })
+    return result
 
-    return session.exec(select(Appointment).where(Appointment.therapist_id == therapist_id)).all()
-    
-@router.get("/patients/{patient_id}/progress")
 def get_patient_progress(patient_id: str, session: Session = Depends(get_session)):
     tasks = session.exec(select(Task).where(Task.assigned_to_id == patient_id)).all()
     total_tasks = len(tasks)
