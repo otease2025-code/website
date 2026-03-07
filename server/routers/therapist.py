@@ -361,7 +361,6 @@ def get_patient_tasks_therapist(patient_id: str, session: Session = Depends(get_
 def get_patient_report(patient_id: str, session: Session = Depends(get_session)):
     tasks = session.exec(select(Task).where(Task.assigned_to_id == patient_id)).all()
 
-    ADL_TYPES = {"adl_scheduling", "adl", "daily routines", "Daily Routines"}
     adl_total = adl_done = task_total = task_done = 0
 
     monthly_data: dict = {}
@@ -372,7 +371,7 @@ def get_patient_report(patient_id: str, session: Session = Depends(get_session))
 
     for task in tasks:
         ttype = (task.task_type or "").strip()
-        is_adl = ttype in ADL_TYPES
+        is_adl = "adl" in ttype.lower()
         completed = task.is_completed and task.verified_by_caregiver
 
         if is_adl:
@@ -425,3 +424,4 @@ def get_patient_report(patient_id: str, session: Session = Depends(get_session))
         ],
         "media": media_list,
     }
+
