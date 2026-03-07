@@ -26,7 +26,6 @@ async def send_push_notification(user_id: str, title: str, body: str):
     Public async function called by therapist.py and other routers.
     Fires a native push notification to the user's device.
     """
-    # Use a new session to ensure we get fresh user data
     with next(get_session()) as session:
         user = session.get(User, user_id)
         if user and user.fcm_token:
@@ -140,7 +139,7 @@ def _generate_therapist_notifications(therapist: User, today_str: str, tomorrow_
     if not patient_ids: return 0
     patient_map = {p.id: p.name or "Patient" for p in patients}
 
-    # Appointments today/tomorrow
+    # Appointments
     today_appointments = session.exec(select(Appointment).where(Appointment.therapist_id == therapist.id)).all()
     for appt in today_appointments:
         appt_ist = appt.datetime.replace(tzinfo=IST)
@@ -156,22 +155,11 @@ def _generate_therapist_notifications(therapist: User, today_str: str, tomorrow_
             key = f"appt_tomorrow_{appt.id}"
             if _create_notification(session, therapist.id, "appointment", "Appointment Tomorrow", f"Reminder: Appointment with {p_name} tomorrow", key):
                 count += 1
-
-    # Mood logs
-    yesterday_ist = (now_ist - timedelta(hours=24)).replace(tzinfo=None)
-    mood_entries = session.exec(select(MoodEntry).where(MoodEntry.user_id.in_(patient_ids), MoodEntry.created_at >= yesterday_ist)).all()
-    for mood in mood_entries:
-        p_name = patient_map.get(mood.user_id, "Patient")
-        key = f"mood_log_{mood.id}"
-        if _create_notification(session, therapist.id, "patient", "New Patient Log", f"{p_name} submitted mood entry (score: {mood.mood_score})", key):
-            count += 1
-
     session.commit()
     return count
 
 def _generate_patient_notifications(patient: User, today_str: str, tomorrow_str: str, now_ist: datetime, session: Session) -> int:
     count = 0
-    # Task reminders
     tasks = session.exec(select(Task).where(Task.assigned_to_id == patient.id, Task.scheduled_date == today_str, Task.is_completed == False)).all()
     for task in tasks:
         try:
@@ -183,7 +171,6 @@ def _generate_patient_notifications(patient: User, today_str: str, tomorrow_str:
                 if _create_notification(session, patient.id, "reminder", "Task Starting Soon", f"Task \"{task.title}\" starts in {int(diff // 60)} minutes", key):
                     count += 1
         except: pass
-
     session.commit()
     return count
 
@@ -192,14 +179,11 @@ def _generate_caregiver_notifications(caregiver: User, today_str: str, now_ist: 
     links = session.exec(select(CaregiverPatient).where(CaregiverPatient.caregiver_id == caregiver.id)).all()
     p_ids = [l.patient_id for l in links]
     if not p_ids: return 0
-    
-    # Verification needed
     pending = session.exec(select(Task).where(Task.assigned_to_id.in_(p_ids), Task.is_completed == True, Task.verified_by_caregiver == False)).all()
     for task in pending:
         key = f"verify_pending_{task.id}"
         if _create_notification(session, caregiver.id, "task", "Verification Pending", f"Task \"{task.title}\" needs verification", key):
             count += 1
-
     session.commit()
     return count
 
@@ -209,16 +193,27 @@ def _notification_exists(user_id: str, key: str, session: Session) -> bool:
     return session.get(Notification, key) is not None
 
 def _send_firebase_push(fcm_token: str, title: str, body: str):
-    """Fires actual push to FCM"""
+    """Fires actual push to FCM with High Priority for Android Banners & Sound"""
     if not fcm_token: return
     try:
         message = messaging.Message(
             notification=messaging.Notification(title=title, body=body),
+            android=messaging.AndroidConfig(
+                priority='high', # Critical for waking device
+                notification=messaging.AndroidNotification(
+                    channel_id='default', # Targeted for Capacitor default channel
+                    priority='high',      # Forces heads-up (pop-up) display
+                    default_sound=True,
+                    default_vibrate_timings=True,
+                    visibility='public'
+                ),
+            ),
             token=fcm_token,
         )
         messaging.send(message)
+        print(f"[FCM] Push sent successfully to {fcm_token[:10]}...")
     except Exception as e:
-        print(f"[FCM] Error: {e}")
+        print(f"[FCM] Error sending push: {e}")
 
 def _create_notification(session: Session, user_id: str, notif_type: str, title: str, message: str, key: str | None = None):
     final_id = key if key else str(uuid.uuid4())
