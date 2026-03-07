@@ -213,3 +213,56 @@ def upsert_patient_profile(patient_id: str, data: PatientProfileUpdate, session:
     for key, value in data.dict(exclude_unset=True).items(): setattr(profile, key, value)
     session.commit()
     return {"message": "Patient profile saved"}
+# ─── Standardized Billing Routes ──────────────────────────────────────────────
+
+@router.post("/billing", status_code=status.HTTP_201_CREATED)
+def create_billing(therapist_id: str, billing_data: BillingCreate, session: Session = Depends(get_session)):
+    """Fixed: Standardized endpoint name from /billing/confirm to /billing"""
+    billing = Billing(
+        patient_id=billing_data.patient_id,
+        therapist_id=therapist_id,
+        description=billing_data.description,
+        amount=billing_data.amount,
+        status=billing_data.status.upper(),
+        payment_method=billing_data.payment_method,
+        transaction_date=datetime.now(IST).replace(tzinfo=None)
+    )
+    session.add(billing)
+    session.commit()
+    session.refresh(billing)
+
+    # In-App and Push Notification
+    create_notification(
+        session, billing_data.patient_id, "billing",
+        "New Bill Generated", 
+        f"You have a new bill of ₹{billing_data.amount:.0f} from your therapist."
+    )
+    session.commit()
+    return {"message": "Billing recorded successfully", "id": billing.id}
+
+@router.get("/billing/patient/{patient_id}")
+def get_patient_billing(patient_id: str, session: Session = Depends(get_session)):
+    """Fixed: More descriptive path to avoid 404s"""
+    bills = session.exec(
+        select(Billing).where(Billing.patient_id == patient_id).order_by(Billing.created_at.desc())
+    ).all()
+    
+    return {
+        "total": sum(b.amount for b in bills),
+        "paid": sum(b.amount for b in bills if b.status == "PAID"),
+        "bills": [b for b in bills]
+    }
+
+@router.put("/billing/{billing_id}/pay")
+def mark_bill_paid(billing_id: str, payload: dict, session: Session = Depends(get_session)):
+    billing = session.get(Billing, billing_id)
+    if not billing:
+        raise HTTPException(status_code=404, detail="Bill not found")
+        
+    billing.status = "PAID"
+    billing.payment_method = payload.get("payment_method", "Cash")
+    billing.transaction_date = datetime.now(IST).replace(tzinfo=None)
+    
+    session.add(billing)
+    session.commit()
+    return {"message": "Payment recorded"}
