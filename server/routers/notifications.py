@@ -15,7 +15,7 @@ from firebase_admin import credentials, messaging
 
 # ─── Firebase Init (runs once on server start) ────────────────────────────────
 if not firebase_admin._apps:
-    cred = credentials.Certificate("serviceAccountKey.json")  # path to your Firebase JSON key
+    cred = credentials.Certificate("firebase-service-account.json")  # path to your Firebase JSON key
     firebase_admin.initialize_app(cred)
 # ─────────────────────────────────────────────────────────────────────────────
 
