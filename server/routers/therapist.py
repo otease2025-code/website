@@ -20,8 +20,13 @@ async def schedule_start_warning(patient_id: str, task_title: str, scheduled_dat
         start_dt_str = f"{scheduled_date} {start_time_str}"
         start_time = datetime.strptime(start_dt_str, "%Y-%m-%d %H:%M")
         warning_time = start_time - timedelta(minutes=5)
-        now = datetime.now()
+
+        # FIX: Use IST-aware now, then strip tzinfo for consistent naive comparison
+        now = datetime.now(IST).replace(tzinfo=None)
         seconds_to_wait = (warning_time - now).total_seconds()
+
+        print(f"[REMINDER] Start warning for '{task_title}' fires in {seconds_to_wait:.0f}s")
+
         if seconds_to_wait > 0:
             await asyncio.sleep(seconds_to_wait)
             await send_push_notification(
@@ -29,16 +34,24 @@ async def schedule_start_warning(patient_id: str, task_title: str, scheduled_dat
                 title="Task Starting Soon! 🔔",
                 body=f"Your task '{task_title}' starts in 5 minutes."
             )
+        else:
+            print(f"[REMINDER] Start warning skipped — task already passed")
     except Exception as e:
         print(f"[ERROR] Start reminder failed: {e}")
+
 
 async def schedule_deadline_warning(patient_id: str, task_title: str, scheduled_date: str, end_time_str: str):
     try:
         end_dt_str = f"{scheduled_date} {end_time_str}"
         end_time = datetime.strptime(end_dt_str, "%Y-%m-%d %H:%M")
         warning_time = end_time - timedelta(minutes=5)
-        now = datetime.now()
+
+        # FIX: Same IST-consistent naive datetime
+        now = datetime.now(IST).replace(tzinfo=None)
         seconds_to_wait = (warning_time - now).total_seconds()
+
+        print(f"[REMINDER] Deadline warning for '{task_title}' fires in {seconds_to_wait:.0f}s")
+
         if seconds_to_wait > 0:
             await asyncio.sleep(seconds_to_wait)
             await send_push_notification(
@@ -46,9 +59,10 @@ async def schedule_deadline_warning(patient_id: str, task_title: str, scheduled_
                 title="Task Ending Soon! ⏳",
                 body=f"Hurry! Only 5 minutes left to finish: {task_title}"
             )
+        else:
+            print(f"[REMINDER] Deadline warning skipped — task already ended")
     except Exception as e:
         print(f"[ERROR] Deadline reminder failed: {e}")
-
 # ─── Pydantic Models ──────────────────────────────────────────────────────────
 
 class TaskAssign(BaseModel):
