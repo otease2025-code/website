@@ -215,11 +215,8 @@ def upsert_patient_profile(patient_id: str, data: PatientProfileUpdate, session:
     return {"message": "Patient profile saved"}
 # ─── Standardized Billing Routes ──────────────────────────────────────────────
 
-# ─── Standardized Billing Routes ──────────────────────────────────────────────
-
-@router.post("/billing", status_code=status.HTTP_201_CREATED)
-def create_billing(therapist_id: str, billing_data: BillingCreate, session: Session = Depends(get_session)):
-    """Fixed: Standardized endpoint name from /billing/confirm to /billing"""
+@router.post("/billing/confirm")
+def confirm_billing(therapist_id: str, billing_data: BillingCreate, session: Session = Depends(get_session)):
     billing = Billing(
         patient_id=billing_data.patient_id,
         therapist_id=therapist_id,
@@ -233,33 +230,54 @@ def create_billing(therapist_id: str, billing_data: BillingCreate, session: Sess
     session.commit()
     session.refresh(billing)
 
-    # In-App and Push Notification
+    # Notification for patient
     create_notification(
         session, billing_data.patient_id, "billing",
-        "New Bill Generated", 
-        f"You have a new bill of ₹{billing_data.amount:.0f} from your therapist."
+        "New Billing",
+        f"New bill of ₹{billing_data.amount:.0f} from your therapist" +
+        (f" — {billing_data.description}" if billing_data.description else "")
     )
     session.commit()
-    return {"message": "Billing recorded successfully", "id": billing.id}
 
-@router.get("/billing/patient/{patient_id}")
+    return {"message": "Billing recorded successfully"}
+
+@router.get("/patients/{patient_id}/billing")
 def get_patient_billing(patient_id: str, session: Session = Depends(get_session)):
-    """Fixed: More descriptive path to avoid 404s"""
+    """Get billing records for a specific patient"""
     bills = session.exec(
         select(Billing).where(Billing.patient_id == patient_id).order_by(Billing.created_at.desc())
     ).all()
     
+    total_billed = sum(b.amount for b in bills)
+    total_paid = sum(b.amount for b in bills if b.status == "PAID")
+    outstanding = total_billed - total_paid
+    
+    bills_list = []
+    for b in bills:
+        therapist = session.get(User, b.therapist_id)
+        bills_list.append({
+            "id": b.id,
+            "description": b.description or "Therapy Session",
+            "amount": b.amount,
+            "date": b.created_at.strftime("%b %d, %Y"),
+            "status": b.status.lower(),
+            "payment_method": b.payment_method,
+            "added_by": therapist.name if therapist else "Therapist"
+        })
+    
     return {
-        "total": sum(b.amount for b in bills),
-        "paid": sum(b.amount for b in bills if b.status == "PAID"),
-        "bills": [b for b in bills]
+        "total": total_billed,
+        "paid": total_paid,
+        "outstanding": outstanding,
+        "bills": bills_list
     }
 
 @router.put("/billing/{billing_id}/pay")
-def mark_bill_paid(billing_id: str, payload: dict, session: Session = Depends(get_session)):
+def pay_bill(billing_id: str, payload: dict, session: Session = Depends(get_session)):
+    """Mark a pending bill as PAID"""
     billing = session.get(Billing, billing_id)
     if not billing:
-        raise HTTPException(status_code=404, detail="Bill not found")
+        raise HTTPException(status_code=404, detail="Billing record not found")
         
     billing.status = "PAID"
     billing.payment_method = payload.get("payment_method", "Cash")
@@ -267,4 +285,4 @@ def mark_bill_paid(billing_id: str, payload: dict, session: Session = Depends(ge
     
     session.add(billing)
     session.commit()
-    return {"message": "Payment recorded"}
+    return {"message": "Bill marked as paid"}
