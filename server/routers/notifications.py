@@ -12,18 +12,7 @@ import asyncio
 from pydantic import BaseModel
 import firebase_admin
 from firebase_admin import credentials, messaging
-# ─── Firebase Init (runs once on server start) ────────────────────────────────
-try:
-    firebase_admin.get_app()  # Returns existing app if already initialized
-    print("[FCM] Firebase already initialized, skipping.")
-except ValueError:
-    # ValueError means no app exists yet — safe to initialize
-    try:
-        cred = credentials.Certificate("firebase-service-account.json")
-        firebase_admin.initialize_app(cred)
-        print("[FCM] Firebase initialized successfully.")
-    except Exception as e:
-        print(f"[FCM] Firebase init failed: {e}")
+
 # ─────────────────────────────────────────────────────────────────────────────
 
 router = APIRouter(prefix="/api/notifications", tags=["notifications"])
