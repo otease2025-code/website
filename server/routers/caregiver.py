@@ -95,10 +95,15 @@ def get_dashboard_stats(caregiver_id: str, session: Session = Depends(get_sessio
     # Get tasks for these patients
     tasks = session.exec(select(Task).where(Task.assigned_to_id.in_(patient_ids))).all()
     
+    from datetime import datetime
+    import pytz
+    
+    tz = pytz.timezone('Asia/Kolkata')
+    today_str = datetime.now(tz).strftime('%Y-%m-%d')
+    
     completed_count = sum(1 for t in tasks if t.is_completed)
-    pending_count = sum(1 for t in tasks if not t.is_completed)
-    # Simple overdue check (assuming tasks are for today or past) - for now just 0 as we don't have strict dates
-    overdue_count = 0 
+    pending_count = sum(1 for t in tasks if not t.is_completed and t.scheduled_date and t.scheduled_date >= today_str)
+    overdue_count = sum(1 for t in tasks if not t.is_completed and t.scheduled_date and t.scheduled_date < today_str)
 
     # Recent activities (last 5 tasks)
     recent_tasks = sorted(tasks, key=lambda t: t.created_at, reverse=True)[:5]
