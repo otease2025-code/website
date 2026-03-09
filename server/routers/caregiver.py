@@ -14,6 +14,7 @@ class TaskVerification(BaseModel):
     task_id: str
     verified: bool
     notes: str | None = None
+    rejection_reason: str | None = None 
 
 @router.get("/tasks")
 def get_caregiver_tasks(caregiver_id: str, session: Session = Depends(get_session)):
@@ -136,26 +137,44 @@ def verify_task(verification: TaskVerification, session: Session = Depends(get_s
     task = session.get(Task, verification.task_id)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
-    
+
     task.verified_by_caregiver = verification.verified
     if verification.notes is not None:
         task.verification_notes = verification.notes
-        
-    session.add(task)
-    session.commit()
-    
-    # Notify therapist that caregiver verified it
+
     if verification.verified:
+        # ── Notify therapist ──────────────────────────────────────
         patient = session.get(User, task.assigned_to_id)
         if patient and patient.therapist_id:
             p_name = patient.name or "Patient"
             create_notification(
                 session, patient.therapist_id, "task",
                 "Task Verified & Completed",
-                f"Caregiver verified that {p_name} completed \"{task.title}\""
+                f'Caregiver verified that {p_name} completed "{task.title}"'
             )
-            session.commit()
+    else:
+        # ── Rejection: reset task + notify patient ────────────────
+        task.is_completed = False
+        task.proof_media_id = None
+        reason = verification.rejection_reason or verification.notes or "No reason provided"
+        task.verification_notes = reason
+        create_notification(
+            session, task.assigned_to_id, "alert",
+            "❌ Task Rejected",
+            f'Your task "{task.title}" was rejected: {reason}'
+        )
+        # Also notify therapist
+        patient = session.get(User, task.assigned_to_id)
+        if patient and patient.therapist_id:
+            p_name = patient.name or "Patient"
+            create_notification(
+                session, patient.therapist_id, "alert",
+                "Task Rejected by Caregiver",
+                f'Caregiver rejected "{task.title}" for {p_name}: {reason}'
+            )
 
+    session.add(task)
+    session.commit()
     return {"message": "Task verification updated"}
 
 @router.get("/patients")
