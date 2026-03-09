@@ -134,6 +134,10 @@ def remove_therapist(therapist_id: str, token: str, session: Session = Depends(g
     for patient in patients:
         if patient.role.value != Role.PATIENT.value:
             continue
+        from models import PatientProfile
+        profile = session.exec(select(PatientProfile).where(PatientProfile.patient_id == patient.id)).first()
+        if profile:
+            session.delete(profile)
         # Delete tasks, notifications, appointments, billing, mood, media
         tasks = session.exec(select(Task).where(Task.assigned_to_id == patient.id)).all()
         for t in tasks: session.delete(t)
@@ -188,7 +192,14 @@ def remove_patient(patient_id: str, token: str, session: Session = Depends(get_s
     patient = session.get(User, patient_id)
     if not patient or patient.role.value != Role.PATIENT.value:
         raise HTTPException(status_code=404, detail="Patient not found")
-        
+    
+    from models import PatientProfile
+
+    # Delete PatientProfile first (FK blocker)
+    profile = session.exec(select(PatientProfile).where(PatientProfile.patient_id == patient_id)).first()
+    if profile:
+        session.delete(profile)
+
     tasks = session.exec(select(Task).where(Task.assigned_to_id == patient.id)).all()
     for t in tasks: session.delete(t)
     
@@ -212,10 +223,12 @@ def remove_patient(patient_id: str, token: str, session: Session = Depends(get_s
     
     cp_links = session.exec(select(CaregiverPatient).where(CaregiverPatient.patient_id == patient.id)).all()
     for link in cp_links: session.delete(link)
-    
+
+    session.flush()
     session.delete(patient)
     session.commit()
     return {"message": "Patient removed"}
+
 
 @router.delete("/caregivers/{caregiver_id}")
 def remove_caregiver(caregiver_id: str, token: str, session: Session = Depends(get_session)):
