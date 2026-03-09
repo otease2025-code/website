@@ -5,7 +5,9 @@ from models import User, Role, Task, CaregiverNote, CaregiverPatient, MediaUploa
 from typing import List
 from pydantic import BaseModel
 from routers.notifications import create_notification
-
+from models import User, Role, Task, CaregiverNote, CaregiverPatient, MediaUpload, Notification
+from datetime import datetime, timedelta, timezone
+IST = timezone(timedelta(hours=5, minutes=30))
 router = APIRouter(prefix="/api/caregiver", tags=["caregiver"])
 
 class TaskVerification(BaseModel):
@@ -396,55 +398,37 @@ def get_reports(caregiver_id: str, period: str = "week", session: Session = Depe
 
 @router.get("/notifications")
 def get_notifications(caregiver_id: str, session: Session = Depends(get_session)):
-    # Generate dynamic notifications from recent tasks/notes
-    caregiver = session.get(User, caregiver_id)
-    if not caregiver:
-        return []
+    from datetime import datetime
+    notifications = session.exec(
+        select(Notification)
+        .where(Notification.user_id == caregiver_id)
+        .order_by(Notification.created_at.desc())
+        .limit(50)
+    ).all()
 
-    # Get linked patients
-    links = session.exec(select(CaregiverPatient).where(CaregiverPatient.caregiver_id == caregiver_id)).all()
-    patient_ids = [link.patient_id for link in links]
-    
-    if not patient_ids:
-        return []
-    
-    patients = session.exec(select(User).where(User.id.in_(patient_ids))).all()
+    def format_time_ago(dt):
+        now = datetime.now(IST).replace(tzinfo=None)
+        if dt.tzinfo:
+            dt = dt.astimezone(IST).replace(tzinfo=None)
+        diff = (now - dt).total_seconds()
+        if diff < 60: return "Just now"
+        if diff < 3600: return f"{int(diff // 60)} mins ago"
+        if diff < 86400: return f"{int(diff // 3600)} hours ago"
+        return dt.strftime("%b %d, %Y")
 
-    notifications = []
-    
-    # Unverified completed tasks
-    recent_tasks = session.exec(select(Task).where(Task.assigned_to_id.in_(patient_ids), Task.is_completed == True, Task.verified_by_caregiver == False).limit(5)).all()
-    for t in recent_tasks:
-        p = next((pat for pat in patients if pat.id == t.assigned_to_id), None)
-        p_name = p.name if p else "Patient"
-        notifications.append({
-            "id": t.id,
-            "type": "task",
-            "title": "Task Completed",
-            "message": f"{p_name} completed '{t.title}' - Verification needed",
-            "time": t.created_at.strftime("%H:%M"), # simplified
-            "read": False,
-            "color": "from-[#00d2d3] to-[#54a0ff]",
-            "icon": "ClipboardCheck" # string representation, frontend maps it
-        })
-
-    # Recent notes
-    recent_notes = session.exec(select(CaregiverNote).where(CaregiverNote.patient_id.in_(patient_ids)).order_by(CaregiverNote.created_at.desc()).limit(5)).all()
-    for n in recent_notes:
-         p = next((pat for pat in patients if pat.id == n.patient_id), None)
-         p_name = p.name if p else "Patient"
-         notifications.append({
+    return [
+        {
             "id": n.id,
-            "type": "update",
-            "title": "New Note",
-            "message": f"Note for {p_name}: {n.content[:50]}...",
-            "time": n.created_at.strftime("%H:%M"),
-            "read": True,
-            "color": "from-[#a55eea] to-[#8c7ae6]",
-            "icon": "ClipboardCheck"
-        })
-
-    return notifications
+            "type": n.type,
+            "title": n.title,
+            "message": n.message,
+            "is_read": n.is_read,
+            "read": n.is_read,
+            "time": format_time_ago(n.created_at),
+            "created_at": n.created_at.isoformat(),
+        }
+        for n in notifications
+    ]
 
 @router.get("/patient/{patient_id}/progress")
 def get_patient_progress(patient_id: str, session: Session = Depends(get_session)):
