@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, select
 from database import get_session
-from models import User, Role, Task, MoodEntry, Billing, LinkageCode
+from models import User, Role, Task, MoodEntry, Billing, LinkageCode, CaregiverPatient
 from typing import List
 from datetime import datetime, timedelta, timezone
 from pydantic import BaseModel
@@ -24,12 +24,6 @@ class MoodSubmission(BaseModel):
 
 @router.get("/tasks", response_model=List[Task])
 def get_tasks(user_id: str, session: Session = Depends(get_session)):
-    # In a real app, we'd get user_id from the token. For now, passing as query param or header is common in simple prototypes,
-    # but better to use dependency injection for current user.
-    # Assuming the frontend sends the user ID or we extract it from token.
-    # For simplicity in this prototype, let's trust the client sending their ID or implement get_current_user.
-    # Let's implement a basic get_current_user dependency if possible, but for now I'll use the ID passed.
-    
     statement = select(Task).where(Task.assigned_to_id == user_id)
     tasks = session.exec(statement).all()
     return tasks
@@ -72,7 +66,6 @@ def get_billing_status(user_id: str, session: Session = Depends(get_session)):
     statement = select(Billing).where(Billing.patient_id == user_id).order_by(Billing.created_at.desc())
     bills = session.exec(statement).all()
     
-    # Calculate totals
     total_billed = sum(b.amount for b in bills)
     total_paid = sum(b.amount for b in bills if b.status == "PAID")
     outstanding = total_billed - total_paid
@@ -102,10 +95,8 @@ def get_caregiver_code(user_id: str, session: Session = Depends(get_session)):
         raise HTTPException(status_code=404, detail="User not found")
         
     if not user.caregiver_code:
-        # Generate simple 6-char code
         import random, string
         code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
-        # Ensure uniqueness (simple check)
         while session.exec(select(User).where(User.caregiver_code == code)).first():
             code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
         
@@ -125,12 +116,9 @@ def complete_task(task_id: str, completion: TaskCompletion, session: Session = D
         raise HTTPException(status_code=404, detail="Task not found")
     
     # 2. IST time-window validation
-    # We only enforce the time window if the user is marking it "completed" WITHOUT uploading media.
-    # Uploading media (proof_media_id) acts as a bypass because it proves presence.
     if completion.is_completed and not completion.proof_media_id:
         now_ist = datetime.now(IST)
         try:
-            # Parse the stored string dates/times into datetime objects for comparison
             task_date = datetime.strptime(task.scheduled_date, "%Y-%m-%d").date()
             start_parts = task.start_time.split(":")
             end_parts = task.end_time.split(":")
@@ -139,13 +127,11 @@ def complete_task(task_id: str, completion: TaskCompletion, session: Session = D
                 task_date.year, task_date.month, task_date.day,
                 int(start_parts[0]), int(start_parts[1]), tzinfo=IST
             )
-            # Add a 5-minute grace period to the end time
             task_end = datetime(
                 task_date.year, task_date.month, task_date.day,
                 int(end_parts[0]), int(end_parts[1]), tzinfo=IST
             ) + timedelta(minutes=5)
             
-            # Raise 400 errors if current time is outside the window
             if now_ist < task_start:
                 raise HTTPException(
                     status_code=400,
@@ -157,13 +143,10 @@ def complete_task(task_id: str, completion: TaskCompletion, session: Session = D
                     detail="Task completion window has expired. This task is now overdue."
                 )
         except ValueError:
-            # If date parsing fails, we allow completion for backward compatibility
             pass
     
     # 3. Update the database object
     task.is_completed = completion.is_completed
-    
-    # CRITICAL FIX: Explicitly assign the media ID to the database column
     if completion.proof_media_id is not None:
         task.proof_media_id = completion.proof_media_id
         
@@ -171,6 +154,26 @@ def complete_task(task_id: str, completion: TaskCompletion, session: Session = D
     session.add(task)
     session.commit()
     session.refresh(task)
+
+    # ── Notify linked caregivers ──────────────────────────────────
+    if completion.is_completed:
+        links = session.exec(
+            select(CaregiverPatient).where(
+                CaregiverPatient.patient_id == task.assigned_to_id
+            )
+        ).all()
+        patient = session.get(User, task.assigned_to_id)
+        patient_name = patient.name if patient else "Patient"
+        for link in links:
+            create_notification(
+                session,
+                link.caregiver_id,
+                "task",
+                "✅ Verification Needed",
+                f'{patient_name} completed "{task.title}" — tap to verify'
+            )
+        session.commit()
+    # ─────────────────────────────────────────────────────────────
 
     return {
         "status": "success",
@@ -184,25 +187,20 @@ class LinkTherapistRequest(BaseModel):
 
 @router.post("/link-therapist")
 def link_therapist(link_data: LinkTherapistRequest, user_id: str, session: Session = Depends(get_session)):
-    # Find valid linkage code
     linkage = session.exec(select(LinkageCode).where(LinkageCode.code == link_data.code)).first()
     if not linkage:
         raise HTTPException(status_code=404, detail="Invalid linkage code")
     
-    # Check expiry
     if linkage.expires_at < datetime.now(IST).replace(tzinfo=None):
         raise HTTPException(status_code=400, detail="Linkage code expired")
     
-    # Get Patient
     patient = session.get(User, user_id)
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
     
-    # Link
     patient.therapist_id = linkage.therapist_id
     session.add(patient)
     session.commit()
     
-    # Get Therapist Name for response
     therapist = session.get(User, linkage.therapist_id)
     return {"message": "Successfully linked to therapist", "therapist_name": therapist.name if therapist else "Therapist"}
